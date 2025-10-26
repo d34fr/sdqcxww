@@ -1,32 +1,31 @@
-const db = require("quick.db")
-const config = require('../config')
-const Discord = require('discord.js')
-const rlog = new db.table("raidlog")
-const wl = new db.table("Whitelist")
-const p = new db.table("Prefix")
+const config = require('../config');
 
 module.exports = {
     name: "messageCreate",
 
     async execute(client, message) {
+        if (message.author.bot) return;
+        if (message.channel.type == "DM") return;
 
-        if (message.author.bot) return
-        if (message.channel.type == "DM") return
+        const prefixKey = `prefix_${message.guild.id}`;
+        const prefix = client.db.get(prefixKey) || config.bot.prefixe;
 
-        let pf = p.fetch(`prefix_${message.guild.id}`)
-        if (pf == null) pf = config.bot.prefixe
+        if (message.content.match(new RegExp(`^<@!?${client.user.id}>( |)$`))) {
+            message.channel.send(`Mon prefix sur le serveur est : \`${prefix}\``);
+        }
 
-        const args = message.content.slice(pf.length).trim().split(' ')
-        const commandName = args.shift().toLowerCase()
-        const command = client.commands.get(commandName)
+        if (!message.content.startsWith(prefix) || message.author.bot) return;
 
-        if (message.content.match(new RegExp(`^<@!?${client.user.id}>( |)$`)))
-            message.channel.send(`Mon prefix sur le serveur est : \`${pf}\``)
+        const args = message.content.slice(prefix.length).trim().split(' ');
+        const commandName = args.shift().toLowerCase();
+        const command = client.commands.get(commandName);
 
-        if (!message.content.startsWith(pf) || message.author.bot) return
-        if (!command) return
+        if (!command) return;
 
-            command.execute(client, message, args)
-
+        try {
+            command.execute(client, message, args);
+        } catch (error) {
+            console.error(error);
+        }
     }
-}
+};
